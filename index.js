@@ -5,9 +5,9 @@
 	var fs = require('fs');
 	var express = require('express');
 	var exphbs = require('express-handlebars');
-	var hbsHelpers = require('./hbs-helpers');
+	var hbsHelpers = require('../../hbs-helpers');
 	var app = express();
-	var routes = require('./routes/index');
+	var routes = require('../../routes/index');
 	var glob = require('glob');
 	var mkdirp = require('mkdirp');
 	var http = require('http');

@@ -11,7 +11,7 @@
     "url": "git+https://github.com/b40houghton/mizer-build.git"
   },
   "bin": {
-    "./index.js"
+    "compile": "./index.js"
   },
   "keywords": [
     "mizer",

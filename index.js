@@ -43,8 +43,12 @@
 
 			return new Promise((resolve, reject) => {
 
-				var parentDir = '/' + file.split('/')[2];
-				var view = '/' + file.split('/')[3].replace(/\.[^/.]+$/, '');
+				var filePathArr = file.split('/');
+				var viewsIndex = filePathArr.indexOf('views');
+
+				var parentDir = (filePathArr.length > 3) ? '/' + filePathArr[viewsIndex + 1] : '';
+				var view = (filePathArr.length > 3) ? '/' + filePathArr[viewsIndex + 2].replace(/\.[^/.]+$/, '') :  '/' + filePathArr[viewsIndex + 1].replace(/\.[^/.]+$/, '');
+
 				var pageView = (view === '/index') ? '/' : view;
 
 				parentDir = parentDir.split('_').join('-');
@@ -137,7 +141,7 @@
 	 * @param  {Function} glob callback
 	 */
 	glob('./views/**/*.hbs', {
-		ignore: ['./views/*.hbs', layoutsGlob, partialsGlob]
+		ignore: ['./views/404.hbs', layoutsGlob, partialsGlob]
 	}, (err, data) => {
 		if (err) throw err;
 

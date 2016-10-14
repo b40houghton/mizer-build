@@ -14,6 +14,9 @@
 	var shell = require('shelljs');
 	var rmdir = require('rimraf');
 
+	// set an env variable for use outside of build
+	process.env.mzr_building = true;
+
 	routes(app);
 
 	require('dotenv').config({ silent: true });

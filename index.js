@@ -31,7 +31,7 @@
 
 	var server = app.listen(3000);
 	var layoutsGlob = `./${hbs.layoutsDir}/*.hbs`;
-	var partialsGlob = `./${hbs.partialsDir}/*.hbs`;
+	var partialsGlob = `./${hbs.partialsDir}/**/*.hbs`;
 
 	/**
 	 * compile hbs files from array using existing routes and data

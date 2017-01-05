@@ -114,8 +114,10 @@
 		var year = date.getFullYear();
 		var timestamp = Math.floor(date.getTime() / 1000);
 		var dateString = `${month}_${day}_${year}_${timestamp}`;
+		var deploymentFile = JSON.parse(fs.readFileSync('./deployment.json', 'utf8'));
+		var prefix = JSON.stringify(deploymentFile.name);
 
-		shell.exec(`zip -r build_${dateString}.zip build`, () => {
+		shell.exec(`zip -r ${prefix}_build_${dateString}.zip build`, () => {
 			server.close();
 		});
 	};

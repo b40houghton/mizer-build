@@ -130,7 +130,7 @@
 	};
 
 	var buildAssets = (callback) => {
-		shell.exec('gulp build --node_env=production', callback);
+		shell.exec('npm run build-assets', callback);
 	};
 
 	/**

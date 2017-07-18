@@ -13,6 +13,7 @@
 	var http = require('http');
 	var shell = require('shelljs');
 	var rmdir = require('rimraf');
+	var nomatch = require('no-match');
 
 	// set an env variable for use outside of build
 	process.env.mzr_building = true;
@@ -154,6 +155,7 @@
 		// compile files based on views directory, close server when complete.
 		compileFiles(data, function () {
 			finalizeBuild();
+			nomatch.init();
 		});
 	});
 

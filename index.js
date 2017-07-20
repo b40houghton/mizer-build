@@ -13,7 +13,8 @@
 	var http = require('http');
 	var shell = require('shelljs');
 	var rmdir = require('rimraf');
-	var nomatch = require('no-match');
+	var getPort = require('get-port');
+	var setPort;
 
 	// set an env variable for use outside of build
 	process.env.mzr_building = true;
@@ -33,9 +34,14 @@
 	app.set('view engine', '.hbs');
 	app.use(express.static('public'));
 
-	var server = app.listen(3000);
+	var server;
 	var layoutsGlob = `./${hbs.layoutsDir}/*.hbs`;
 	var partialsGlob = `./${hbs.partialsDir}/**/*.hbs`;
+
+	getPort().then(port => {
+		setPort = port;
+		server = app.listen(setPort);
+	});
 
 	/**
 	 * compile hbs files from array using existing routes and data
@@ -62,7 +68,7 @@
 
 				var options = {
 					host: 'localhost',
-					port: '3000',
+					port: setPort,
 					method: 'GET',
 					path: parentDir + pageView
 				};

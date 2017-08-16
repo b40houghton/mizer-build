@@ -2,167 +2,183 @@
 
 (function () {
 
-	var fs = require('fs');
-	var express = require('express');
-	var exphbs = require('express-handlebars');
-	var hbsHelpers = require('../../hbs-helpers');
-	var app = express();
-	var routes = require('../../routes/index');
-	var glob = require('glob');
-	var mkdirp = require('mkdirp');
-	var http = require('http');
-	var shell = require('shelljs');
-	var rmdir = require('rimraf');
-	var getPort = require('get-port');
-	var setPort;
+		var fs = require('fs');
+		var express = require('express');
+		var exphbs = require('express-handlebars');
+		var hbsHelpers = require('../../hbs-helpers');
+		var app = express();
+		var routes = require('../../routes/index');
+		var globby = require('globby');
+		var mkdirp = require('mkdirp');
+		var http = require('http');
+		var shell = require('shelljs');
+		var rmdir = require('rimraf');
+		var getPort = require('get-port');
+		var nomatch = require('no-match');
+		var setPort;
 
-	// set an env variable for use outside of build
-	process.env.mzr_building = true;
+		// set an env variable for use outside of build
+		process.env.mzr_building = true;
 
-	routes(app);
+		routes(app);
 
-	require('dotenv').config({ silent: true });
+		require('dotenv').config({ silent: true });
 
-	// handlebars config
-	var hbs = exphbs.create({
-		extname: '.hbs',
-		defaultLayout: 'default',
-		helpers: hbsHelpers
-	});
+		// handlebars config
+		// namespace the partial folders for each site
+		const partialsNamespacedDir = globby.sync(['./base/base-views/partials', './site-sections/**/views/partials']).map((partialPath) => {
+			const site = partialPath.split('/')
+				.filter(n =>
+					n !== '' && // no blank
+					n !== '.' && // no '.'
+					n !== 'site-sections') // no site-sections
+				.shift(); // grab the initial directory
 
-	app.engine('.hbs', hbs.engine);
-	app.set('view engine', '.hbs');
-	app.use(express.static('public'));
+			return {
+				dir: partialPath,
+				namespace: site
+			};
+		});
 
-	var server;
-	var layoutsGlob = `./${hbs.layoutsDir}/*.hbs`;
-	var partialsGlob = `./${hbs.partialsDir}/**/*.hbs`;
+		// handlebars config
+		const hbs = exphbs.create({
+			extname: '.hbs',
+			defaultLayout: 'default',
+			helpers: hbsHelpers,
+			layoutsDir: './base/base-views/layouts',
+			partialsDir: partialsNamespacedDir
+		});
 
-	getPort().then(port => {
-		setPort = port;
-		server = app.listen(setPort);
-	});
+		const ignoreArr = [];
 
-	/**
-	 * compile hbs files from array using existing routes and data
-	 * @param  {Array}   arr [array of hbs files to build]
-	 * @param  {Function} cb  [callback function after files built]
-	 */
-	var compileFiles = (arr, cb) => {
-		var processFiles = arr.map((file) => {
+		app.engine('.hbs', hbs.engine);
+		app.set('view engine', '.hbs');
+		app.use(express.static('public'));
 
-			return new Promise((resolve, reject) => {
+		var server;
 
-				var filePathArr = file.split('/');
-				var viewsIndex = filePathArr.indexOf('views');
+		ignoreArr.push('./base/base-views/layouts/*.hbs');
 
-				var parentDir = (filePathArr.length > 3) ? '/' + filePathArr[viewsIndex + 1] : '';
-				var view = (filePathArr.length > 3) ? '/' + filePathArr[viewsIndex + 2].replace(/\.[^/.]+$/, '') :  '/' + filePathArr[viewsIndex + 1].replace(/\.[^/.]+$/, '');
+		hbs.partialsDir.forEach((partialObj) => {
+			ignoreArr.push(`${partialObj.dir}/**/*.hbs`);
+		});
 
-				var pageView = (view === '/index') ? '/' : view;
+		getPort().then(port => {
+			setPort = port;
+			server = app.listen(setPort);
+		});
 
-				parentDir = parentDir.split('_').join('-');
+		/**
+		 * compile hbs files from array using existing routes and data
+		 * @param  {Array}   arr [array of hbs files to build]
+		 * @param  {Function} cb  [callback function after files built]
+		 */
+		var compileFiles = (arr, cb) => {
+			var processFiles = arr.map((file) => {
 
-				//change directory based on site
-				if(parentDir === '/global') parentDir = '';
+				return new Promise((resolve, reject) => {
+					const urlArray = file.replace(/\.[^/.]+$/, '').split('/').filter(n => n !== '' && n !== '.' && n !== 'site-sections' && n !== 'views' && n !== 'root' && n !== 'index');
+					const pathArray = Array.from(urlArray);
+					const siteDirectory = (pathArray.length) ? pathArray.shift() : 'root';
+					const view = (pathArray.length) ? pathArray.join('/') : 'index';
+					const urlPath = `/${urlArray.join('/')}`;
 
-				var options = {
-					host: 'localhost',
-					port: setPort,
-					method: 'GET',
-					path: parentDir + pageView
-				};
+					const options = {
+						host: 'localhost',
+						port: setPort,
+						method: 'GET',
+						path: urlPath
+					};
 
-				// http get each page, build page/directory from response
-				http.get(options, (res) => {
+					// // http get each page, build page/directory from response
+					http.get(options, (res) => {
 
-					var body = '';
+						var body = '';
 
-					res.setEncoding('utf8');
+						res.setEncoding('utf8');
 
-					// build data
-					res.on('data', (data) => body += data);
+						// build data
+						res.on('data', (data) => body += data);
 
-					res.on('end', () => {
+						res.on('end', () => {
 
-						// build directory structure or find existing
-						mkdirp('./build/' + parentDir, (err) => {
-							if(err) reject(err);
+							// build directory structure or find existing
+							mkdirp('./build/' + siteDirectory, (err) => {
+								if (err) reject(err);
 
-							// build page within site directory, using view data.
-							fs.writeFile('./build' + parentDir + view + '.html', body, (err) => {
-								if(err) reject(err);
-								console.log('Building: ' + parentDir + view + '.html');
-								resolve();
+								// build page within site directory, using view data.
+								fs.writeFile(`./build/${siteDirectory}/${view}.html`, body, (err) => {
+									if(err) reject(err);
+									console.log(`Building ./build/${siteDirectory}/${view}.html`);
+									resolve();
+								});
 							});
 						});
-					});
 
-				}).on('error', (err) => reject(err) );
+					}).on('error', (err) => reject(err) );
+				});
+			});
+
+			Promise.all(processFiles).then(function() {
+				console.log('All files processed.');
+				cb();
+			}).catch(function (err) {
+				console.log(err);
+				cb();
+			});
+		};
+
+		/**
+		 * compress the build directory and close the server
+		 */
+		var finalizeBuild = () => {
+			var date = new Date();
+			var day = date.getDate();
+			var month = date.getMonth();
+			var year = date.getFullYear();
+			var timestamp = Math.floor(date.getTime() / 1000);
+			var dateString = `${month}_${day}_${year}_${timestamp}`;
+
+			var deploymentFile = JSON.parse(fs.readFileSync('./deployment.json', 'utf8'));
+			var prefix = (JSON.stringify(deploymentFile.name)) ? (JSON.stringify(deploymentFile.name)) : 'project';
+
+			shell.exec(`zip -r ${prefix}_build_${dateString}.zip build`, () => {
+				server.close();
+			});
+		};
+
+		var removeBuild = (callback) => {
+			rmdir('./*.zip', () => {
+				rmdir('./build', callback);
+			});
+		};
+
+		var buildAssets = (callback) => {
+			shell.exec('npm run build-assets', callback);
+		};
+
+		/**
+		 * run the gulp build command with production env to build and move js/css/images to the build directory
+		 */
+		removeBuild(function () {
+			buildAssets();
+		});
+
+		/**
+		 * get all hbs files in the views directory and pass to compileFiles(), run finalizeBuild on completion.
+		 * @param  {String} glob string
+		 * @param  {Object} glob settings
+		 * @param  {Function} glob callback
+		 */
+
+		globby('./site-sections/**/views/*.hbs', {
+			ignore: ignoreArr
+		}).then(data => {
+			// compile files based on views directory, close server when complete.
+			compileFiles(data, function () {
+				finalizeBuild();
+				nomatch.init();
 			});
 		});
 
-		Promise.all(processFiles).then(function() {
-			console.log('All files processed.');
-			cb();
-		}).catch(function (err) {
-			console.log(err);
-			cb();
-		});
-	};
-
-	/**
-	 * compress the build directory and close the server
-	 */
-	var finalizeBuild = () => {
-		var date = new Date();
-		var day = date.getDate();
-		var month = date.getMonth();
-		var year = date.getFullYear();
-		var timestamp = Math.floor(date.getTime() / 1000);
-		var dateString = `${month}_${day}_${year}_${timestamp}`;
-
-		var deploymentFile = JSON.parse(fs.readFileSync('./deployment.json', 'utf8'));
-		var prefix = (JSON.stringify(deploymentFile.name)) ? (JSON.stringify(deploymentFile.name)) : 'project';
-
-		shell.exec(`zip -r ${prefix}_build_${dateString}.zip build`, () => {
-			server.close();
-		});
-	};
-
-	var removeBuild = (callback) => {
-		rmdir('./*.zip', () => {
-			rmdir('./build', callback);
-		});
-	};
-
-	var buildAssets = (callback) => {
-		shell.exec('npm run build-assets', callback);
-	};
-
-	/**
-	 * run the gulp build command with production env to build and move js/css/images to the build directory
-	 */
-	removeBuild(function () {
-		buildAssets();
-	});
-
-	/**
-	 * get all hbs files in the views directory and pass to compileFiles(), run finalizeBuild on completion.
-	 * @param  {String} glob string
-	 * @param  {Object} glob settings
-	 * @param  {Function} glob callback
-	 */
-	glob('./views/**/*.hbs', {
-		ignore: ['./views/404.hbs', layoutsGlob, partialsGlob]
-	}, (err, data) => {
-		if (err) throw err;
-
-		// compile files based on views directory, close server when complete.
-		compileFiles(data, function () {
-			finalizeBuild();
-			nomatch.init();
-		});
-	});
-
-})();
+	})();

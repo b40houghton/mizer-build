@@ -14,7 +14,6 @@
 		var shell = require('shelljs');
 		var rmdir = require('rimraf');
 		var getPort = require('get-port');
-		var nomatch = require('no-match');
 		var setPort;
 
 		// set an env variable for use outside of build
@@ -177,7 +176,6 @@
 			// compile files based on views directory, close server when complete.
 			compileFiles(data, function () {
 				finalizeBuild();
-				nomatch.init();
 			});
 		});
 

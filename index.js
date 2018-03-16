@@ -161,22 +161,21 @@
 		 */
 		removeBuild(function () {
 			buildAssets();
-		});
 
-		/**
-		 * get all hbs files in the views directory and pass to compileFiles(), run finalizeBuild on completion.
-		 * @param  {String} glob string
-		 * @param  {Object} glob settings
-		 * @param  {Function} glob callback
-		 */
+			/**
+			 * get all hbs files in the views directory and pass to compileFiles(), run finalizeBuild on completion.
+			 * @param  {String} glob string
+			 * @param  {Object} glob settings
+			 * @param  {Function} glob callback
+			 */
 
-		globby('./site-sections/**/views/*.hbs', {
-			ignore: ignoreArr
-		}).then(data => {
-			// compile files based on views directory, close server when complete.
-			compileFiles(data, function () {
-				finalizeBuild();
+			globby('./site-sections/**/views/*.hbs', {
+				ignore: ignoreArr
+			}).then(data => {
+				// compile files based on views directory, close server when complete.
+				compileFiles(data, function () {
+					finalizeBuild();
+				});
 			});
 		});
-
 	})();

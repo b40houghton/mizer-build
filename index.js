@@ -10,7 +10,7 @@
 		var routes = require('../../routes/index');
 		var globby = require('globby');
 		var mkdirp = require('mkdirp');
-		var http = require('http');
+		var http = require('follow-redirects').http;
 		var shell = require('shelljs');
 		var rmdir = require('rimraf');
 		var getPort = require('get-port');

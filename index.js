@@ -10,7 +10,7 @@
 		var routes = require('../../routes/index');
 		var globby = require('globby');
 		var mkdirp = require('mkdirp');
-		var http = require('follow-redirects').http;
+		var request = require('request');
 		var shell = require('shelljs');
 		var rmdir = require('rimraf');
 		var getPort = require('get-port');
@@ -83,24 +83,13 @@
 					const urlPath = `/${urlArray.join('/')}`;
 
 					const options = {
-						host: 'localhost',
-						port: setPort,
+						baseUrl: `http://localhost:${setPort}/`,
 						method: 'GET',
-						path: urlPath
+						url: urlPath
 					};
 
-					// // http get each page, build page/directory from response
-					http.get(options, (res) => {
-
-						var body = '';
-
-						res.setEncoding('utf8');
-
-						// build data
-						res.on('data', (data) => body += data);
-
-						res.on('end', () => {
-
+					// HTTP GET each page, build page/directory from response
+					request(options, (error, response, body) => {
 							// build directory structure or find existing
 							mkdirp('./build/' + siteDirectory, (err) => {
 								if (err) reject(err);
@@ -112,8 +101,6 @@
 									resolve();
 								});
 							});
-						});
-
 					}).on('error', (err) => reject(err) );
 				});
 			});

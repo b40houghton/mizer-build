@@ -90,17 +90,17 @@
 
 					// HTTP GET each page, build page/directory from response
 					request(options, (error, response, body) => {
-							// build directory structure or find existing
-							mkdirp('./build/' + siteDirectory, (err) => {
-								if (err) reject(err);
+						// build directory structure or find existing
+						mkdirp('./build/' + siteDirectory, (err) => {
+							if (err) reject(err);
 
-								// build page within site directory, using view data.
-								fs.writeFile(`./build/${siteDirectory}/${view}.html`, body, (err) => {
-									if(err) reject(err);
-									console.log(`Building ./build/${siteDirectory}/${view}.html`);
-									resolve();
-								});
+							// build page within site directory, using view data.
+							fs.writeFile(`./build/${siteDirectory}/${view}.html`, body, (err) => {
+								if(err) reject(err);
+								console.log(`Building ./build/${siteDirectory}/${view}.html`);
+								resolve();
 							});
+						});
 					}).on('error', (err) => reject(err) );
 				});
 			});

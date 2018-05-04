@@ -10,7 +10,7 @@
 		var routes = require('../../routes/index');
 		var globby = require('globby');
 		var mkdirp = require('mkdirp');
-		var http = require('http');
+		var request = require('request');
 		var shell = require('shelljs');
 		var rmdir = require('rimraf');
 		var getPort = require('get-port');
@@ -83,37 +83,24 @@
 					const urlPath = `/${urlArray.join('/')}`;
 
 					const options = {
-						host: 'localhost',
-						port: setPort,
+						baseUrl: `http://localhost:${setPort}/`,
 						method: 'GET',
-						path: urlPath
+						url: urlPath
 					};
 
-					// // http get each page, build page/directory from response
-					http.get(options, (res) => {
+					// HTTP GET each page, build page/directory from response
+					request(options, (error, response, body) => {
+						// build directory structure or find existing
+						mkdirp('./build/' + siteDirectory, (err) => {
+							if (err) reject(err);
 
-						var body = '';
-
-						res.setEncoding('utf8');
-
-						// build data
-						res.on('data', (data) => body += data);
-
-						res.on('end', () => {
-
-							// build directory structure or find existing
-							mkdirp('./build/' + siteDirectory, (err) => {
-								if (err) reject(err);
-
-								// build page within site directory, using view data.
-								fs.writeFile(`./build/${siteDirectory}/${view}.html`, body, (err) => {
-									if(err) reject(err);
-									console.log(`Building ./build/${siteDirectory}/${view}.html`);
-									resolve();
-								});
+							// build page within site directory, using view data.
+							fs.writeFile(`./build/${siteDirectory}/${view}.html`, body, (err) => {
+								if(err) reject(err);
+								console.log(`Building ./build/${siteDirectory}/${view}.html`);
+								resolve();
 							});
 						});
-
 					}).on('error', (err) => reject(err) );
 				});
 			});
